@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: eps_user
+      POSTGRES_PASSWORD: eps_password
+      POSTGRES_DB: eps_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eps_user -d eps_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://eps_user:eps_password@db:5432/eps_db
+      - SECRET_KEY=${SECRET_KEY:-cambiar_esta_clave_secreta_en_produccion_minimo_32_caracteres_aleatorios}
+      - FIRST_SUPERUSER=admin@eps.com
+      - FIRST_SUPERUSER_PASSWORD=AdminSecure2024!
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+volumes:
+  postgres_data:
